@@ -25,7 +25,7 @@ export default class Book {
     this.group = group;
 
     this.photos = photos;
-    // @TODO fix maths for this
+    // @TODO make this 0-indexed
     this.currentSpread = 4;
 
     const coverGeometry = new THREE.BoxGeometry(2.2, 3.2, 0.03);
@@ -49,7 +49,8 @@ export default class Book {
     });
 
     // A sheet is two pages (plus a blank one at beginning and end)
-    const sheetCount = Math.ceil(photos.length / 2) + 2;
+    const pageCount = Math.ceil(photos.length / 2);
+    const sheetCount = Math.ceil(pageCount / 2) + 2;
 
     const sheets: Sheet[] = [];
     for (let i = 0; i < sheetCount; i++) {
@@ -62,16 +63,18 @@ export default class Book {
 
       const sheet = new THREE.Group();
 
+      const frontPageTexture = this.getPageTexture(i * 2 - 2);
       const frontPageMaterial = new THREE.MeshStandardMaterial({
-        map: this.getPageTexture(i * 2 - 2)
+        map: frontPageTexture
       });
 
       const frontPage = new THREE.Mesh(pageGeometry, frontPageMaterial);
       sheet.add(frontPage);
 
-      const backPageMaterial = new THREE.MeshStandardMaterial({
-        map: this.getPageTexture(i * 2 - 1)
-      });
+      const backPageTexture = this.getPageTexture(i * 2 - 1);
+      const backPageMaterial = new THREE.MeshStandardMaterial(
+        backPageTexture ? { map: backPageTexture } : { color: 'white' }
+      );
 
       const backPage = new THREE.Mesh(pageGeometry, backPageMaterial);
       backPage.rotateY(Math.PI);
@@ -120,6 +123,7 @@ export default class Book {
     return max - eachSheetAngle * reverseIndex;
   }
 
+  // pageIndex is 1-indexed
   private getPageTexture(pageIndex: number) {
     const ctx = document.createElement('canvas').getContext('2d');
 
@@ -128,19 +132,32 @@ export default class Book {
       throw new Error('?!?!?!');
     }
 
-    ctx.canvas.width = 210;
-    ctx.canvas.height = 297;
+    const width = (ctx.canvas.width = 210 * 4);
+    const height = (ctx.canvas.height = 297 * 4);
 
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, 210, 297);
+    ctx.fillRect(0, 0, width, height);
 
-    const photo = this.photos[pageIndex];
+    const topPhoto = this.photos[pageIndex * 2];
 
-    if (!photo || !photo.image) {
-      throw new Error('No image');
+    if (!topPhoto || !topPhoto.image) {
+      return undefined;
     }
 
-    ctx.drawImage(photo.image, 50, 50, 100, 100);
+    ctx.drawImage(
+      topPhoto.image,
+      (width - topPhoto.image.width) / 2,
+      height / 4 - topPhoto.image.height / 2
+    );
+
+    const bottomPhoto = this.photos[pageIndex * 2 + 1];
+    if (bottomPhoto && bottomPhoto.image) {
+      ctx.drawImage(
+        bottomPhoto.image,
+        (width - bottomPhoto.image.width) / 2,
+        (height / 4) * 3 - bottomPhoto.image.height / 2
+      );
+    }
 
     return new THREE.CanvasTexture(ctx.canvas);
   }
