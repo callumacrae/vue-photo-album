@@ -8,6 +8,7 @@
 <script type="ts">
 import * as THREE from 'three';
 import Book from '../components/book';
+import loadPhotos from '../utils/photo-data';
 
 export default {
   data: () => ({
@@ -52,9 +53,11 @@ export default {
       scene.background = new THREE.Color(0x66667d);
       this.scene = scene;
 
-      const book = new Book();
-      this.book = book;
-      scene.add(book.getGroup());
+      loadPhotos().then(photos => {
+        const book = new Book(photos);
+        this.book = book;
+        scene.add(book.getGroup());
+      });
 
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
       scene.add(ambientLight);
@@ -76,7 +79,9 @@ export default {
         width, height, renderer, scene, camera, book, directionalLight, mousePosition
       } = this;
 
-      book.update(t);
+      if (book) {
+        book.update(t);
+      }
 
       if (mousePosition.x !== -1) {
         const u = mousePosition.x / width;

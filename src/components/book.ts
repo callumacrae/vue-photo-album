@@ -1,22 +1,25 @@
 import * as THREE from 'three';
+import { PhotoDescription} from '../utils/photo-data';
 
 interface Page {
   mesh: THREE.Mesh;
   index: number;
 }
+
 export default class Book {
   private group: THREE.Group;
   private frontCover: THREE.Object3D;
   private backCover: THREE.Object3D;
-  private pageCount: number;
-  private pages: Page[];
-  private currentPage: number;
+  private sheets: Page[];
+  private photos: PhotoDescription[];
+  private currentSpread: number;
 
-  constructor(pageCount = 20) {
+  constructor(photos: PhotoDescription[]) {
     const group = new THREE.Group();
     this.group = group;
-    this.pageCount = pageCount;
-    this.currentPage = 10;
+
+    this.photos = photos;
+    this.currentSpread = 4;
 
     const coverGeometry = new THREE.BoxGeometry(2.2, 3.2, 0.03);
     coverGeometry.applyMatrix4(new THREE.Matrix4().makeTranslation(1.1, 0, 0));
@@ -39,19 +42,18 @@ export default class Book {
       side: THREE.DoubleSide
     });
 
-    // Pages are more than one thing - this refers to sheets of paper, while
-    // pageCount refers to the number of sides that we can write on
-    const actualPageCount = Math.ceil(pageCount / 2) + 2;
+    // A sheet is two pages (plus a blank one at beginning and end)
+    const sheetCount = Math.ceil(photos.length / 2) + 2;
 
-    const pages: Page[] = [];
-    for (let i = 0; i < actualPageCount; i++) {
-      const page = new THREE.Mesh(pageGeometry, pageMaterial);
-      group.add(page);
-      pages.push({ mesh: page, index: i });
+    const sheets: Page[] = [];
+    for (let i = 0; i < sheetCount; i++) {
+      const sheet = new THREE.Mesh(pageGeometry, pageMaterial);
+      group.add(sheet);
+      sheets.push({ mesh: sheet, index: i });
     }
-    this.pages = pages;
+    this.sheets = sheets;
 
-    this.setPageAngles();
+    this.setSheetAngles();
   }
 
   public getGroup() {
@@ -62,30 +64,29 @@ export default class Book {
     // this.group.rotation.y = t;
   }
 
-  private setPageAngles() {
-    const frontRotation = this.getPageAngle(0);
+  private setSheetAngles() {
+    const frontRotation = this.getSheetAngle(0);
     this.frontCover.rotation.y = frontRotation;
     this.frontCover.position.z =
       frontRotation > (Math.PI / 8) * 12 ? 0.02 : -0.02;
-    this.backCover.rotation.y = this.getPageAngle(this.pages.length - 1);
+    this.backCover.rotation.y = this.getSheetAngle(this.sheets.length - 1);
 
-    this.pages.forEach((page, i) => {
-      page.mesh.rotation.y = this.getPageAngle(i);
+    this.sheets.forEach((page, i) => {
+      page.mesh.rotation.y = this.getSheetAngle(i);
     });
   }
 
-  private getPageAngle(index: number) {
+  private getSheetAngle(index: number) {
     const min = (Math.PI / 8) * 9;
     const max = (Math.PI / 8) * 15;
 
-    const eachPageAngle = Math.PI / 128;
+    const eachSheetAngle = Math.PI / 128;
 
-    const actualPage = this.currentPage / 2;
-    if (index < actualPage) {
-      return min + eachPageAngle * index;
+    if (index < this.currentSpread) {
+      return min + eachSheetAngle * index;
     }
 
-    const reverseIndex = this.pages.length - 1 - index;
-    return max - eachPageAngle * reverseIndex;
+    const reverseIndex = this.sheets.length - 1 - index;
+    return max - eachSheetAngle * reverseIndex;
   }
 }
