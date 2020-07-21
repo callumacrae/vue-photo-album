@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PhotoDescription } from '../utils/photo-data';
+import leatherImage from '../assets/leather.jpg';
 
 interface Sheet {
   object: THREE.Object3D;
@@ -26,11 +27,22 @@ export default class Book {
 
     this.photos = photos;
     // @TODO make this 0-indexed
-    this.currentSpread = 4;
+    this.currentSpread = 1;
 
     const coverGeometry = new THREE.BoxGeometry(2.2, 3.2, 0.03);
     coverGeometry.applyMatrix4(new THREE.Matrix4().makeTranslation(1.1, 0, 0));
     const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x50301a });
+
+    const loader = new THREE.TextureLoader();
+    loader.load(leatherImage, texture => {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2, 2);
+
+      coverMaterial.color = new THREE.Color(0xaaaaaa);
+      coverMaterial.map = texture;
+      coverMaterial.needsUpdate = true;
+    });
 
     const frontCover = new THREE.Mesh(coverGeometry, coverMaterial);
     frontCover.position.z = -0.02;
@@ -48,8 +60,9 @@ export default class Book {
       side: THREE.DoubleSide
     });
 
+    // A page is two photos (plus a title page)
+    const pageCount = Math.ceil(photos.length / 2) + 1;
     // A sheet is two pages (plus a blank one at beginning and end)
-    const pageCount = Math.ceil(photos.length / 2);
     const sheetCount = Math.ceil(pageCount / 2) + 2;
 
     const sheets: Sheet[] = [];
@@ -63,15 +76,15 @@ export default class Book {
 
       const sheet = new THREE.Group();
 
-      const frontPageTexture = this.getPageTexture(i * 2 - 2);
-      const frontPageMaterial = new THREE.MeshStandardMaterial({
-        map: frontPageTexture
-      });
+      const frontPageTexture = this.getPageTexture(i * 2 - 3);
+      const frontPageMaterial = new THREE.MeshStandardMaterial(
+        frontPageTexture ? { map: frontPageTexture } : { color: 'white' }
+      );
 
       const frontPage = new THREE.Mesh(pageGeometry, frontPageMaterial);
       sheet.add(frontPage);
 
-      const backPageTexture = this.getPageTexture(i * 2 - 1);
+      const backPageTexture = this.getPageTexture(i * 2 - 2);
       const backPageMaterial = new THREE.MeshStandardMaterial(
         backPageTexture ? { map: backPageTexture } : { color: 'white' }
       );
@@ -125,6 +138,12 @@ export default class Book {
 
   // pageIndex is 1-indexed
   private getPageTexture(pageIndex: number) {
+    const topPhoto = this.photos[pageIndex * 2];
+
+    if (pageIndex !== -1 && (!topPhoto || !topPhoto.image)) {
+      return undefined;
+    }
+
     const ctx = document.createElement('canvas').getContext('2d');
 
     if (!ctx) {
@@ -138,16 +157,31 @@ export default class Book {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, width, height);
 
-    const topPhoto = this.photos[pageIndex * 2];
+    if (pageIndex === -1) {
+      ctx.font = '200px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#3a3a46';
+      ctx.lineWidth = 2.5;
 
-    if (!topPhoto || !topPhoto.image) {
-      return undefined;
+      ctx.strokeText("Callum's", width / 2, height / 2 - 350);
+      ctx.strokeText('Demo', width / 2, height / 2 - 150);
+      ctx.strokeText('Photo', width / 2, height / 2 + 50);
+      ctx.strokeText('Album', width / 2, height / 2 + 250);
+
+      ctx.font = '50px serif';
+      ctx.fillStyle = '#3a3a46';
+      ctx.globalAlpha = 0.3;
+      ctx.fillText('(i am not a designer)', width / 2, height / 2 + 400);
+
+      return new THREE.CanvasTexture(ctx.canvas);
     }
 
+    const image = topPhoto.image as HTMLImageElement;
     ctx.drawImage(
-      topPhoto.image,
-      (width - topPhoto.image.width) / 2,
-      height / 4 - topPhoto.image.height / 2
+      image,
+      (width - image.width) / 2,
+      height / 4 - image.height / 2
     );
 
     const bottomPhoto = this.photos[pageIndex * 2 + 1];

@@ -50,7 +50,7 @@ export default {
       this.camera = camera;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x66667d);
+      scene.background = new THREE.Color(0x3a3a46);
       this.scene = scene;
 
       loadPhotos().then(photos => {
