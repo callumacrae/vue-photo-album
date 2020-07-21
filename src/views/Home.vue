@@ -1,9 +1,6 @@
 <template>
   <div>
-    <canvas
-      ref="canvas"
-      @click="status = status === 'playing' ? 'paused' : 'playing'"
-    ></canvas>
+    <canvas ref="canvas" @mousemove="handleMousemove"></canvas>
     <!-- <GlobalEvents target="window" @resize="init" /> -->
   </div>
 </template>
@@ -15,6 +12,7 @@ import Book from '../components/book';
 export default {
   data: () => ({
     status: 'playing',
+    mousePosition: { x: -1, y: -1 },
     width: undefined,
     height: undefined
   }),
@@ -63,6 +61,7 @@ export default {
 
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.45);
       directionalLight.position.z = 5;
+      this.directionalLight = directionalLight;
       scene.add(directionalLight);
     },
     frame(timestamp = 0) {
@@ -73,11 +72,33 @@ export default {
       }
 
       const t = timestamp / 1e3;
-      const { width, height, renderer, scene, camera, book } = this;
+      const {
+        width, height, renderer, scene, camera, book, directionalLight, mousePosition
+      } = this;
 
-      this.book.update(t);
+      book.update(t);
+
+      if (mousePosition.x !== -1) {
+        const u = mousePosition.x / width;
+        const v = mousePosition.y / height;
+
+        // @TODO easings?
+        const posX = u * 2 - 1;
+        const posY = v * -2 + 1;
+
+        camera.position.x = posX;
+        camera.position.y = posY;
+        camera.lookAt(0, 0, 0);
+
+        directionalLight.position.x = posX;
+        directionalLight.position.y = posY;
+        directionalLight.lookAt(0, 0, 0);
+      }
 
       renderer.render(scene, camera);
+    },
+    handleMousemove(e) {
+      this.mousePosition = { x: e.pageX, y: e.pageY };
     }
   },
   computed: {
